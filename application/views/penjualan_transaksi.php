@@ -1,15 +1,12 @@
 <div class="row">
     <div class="col-md-4">
-        <!-- pemilihan produk -->
-        <div class="form-group">
-            <label for="exampleSelect1" class="form-control-label">Nota</label>
-            <input type="text" name="kode_penjualan" value="<?= $nota ?>" class="form-control" readonly>
-        </div>  
+        <!-- pemilihan produk -->  
         <div class="form-group">
         <label for="exampleSelect1" class="form-control-label">Nama Pelanggan</label>
             <input type="text" class="form-control" name="kode_penjualan" value="<?= $nama_pelanggan ?>" readonly>
         </div>
-        <form action="<?= base_url('penjualan/tambahKeranjang') ?>" method="post">
+        <form action="<?= base_url('penjualan/addTemp') ?>" method="post">
+        <input type="hidden" name="id_pelanggan" value="<?= $id_pelanggan ?>">
         <div class="form-group">
             <label for="exampleSelect1" class="form-control-label">Pilih Produk</label>
             <input type="hidden" name="kode_penjualan" value="<?= $nota ?>">
@@ -44,18 +41,28 @@
                                     <?php 
                                     $no =1;
                                     $total = 0;
-                                    foreach($detail as $row){ 
+                                    $cek = 0;
+                                    foreach($temp as $row){ 
                                     ?>
                                     <tr>
                                        <td><?= $no ?></td>
                                        <td><?= $row['kode_produk'] ?></td>
                                        <td><?= $row['nama'] ?></td>
-                                       <td><?= $row['jumlah'] ?></td>
+                                       <td><?= $row['jumlah'] ?>
+                                        <?php
+                                        if($row['jumlah']>$row['stok']){
+                                            echo "<div class='alert alert-danger' role='alert'>
+                                            Produk Yang Dipilih Tidak Mencukupi
+                                            </div>";
+                                            $cek = 1;
+                                        }
+                                        ?>
+                                        </td>
                                        <td>Rp. <?= number_format($row['harga'])?></td>
                                        <td>Rp. <?= number_format($row['jumlah']*$row['harga'])?></td>
                                        <td>
                                         <a onClick="return confirm('Yakin Ingin Menghapus Produk Dari Keranjang?')"
-                                        href="<?=base_url('penjualan/hapus/'.$row['id_detail'].'/'.$row['id_produk']);?>" class="btn btn-danger">
+                                        href="<?=base_url('penjualan/tempHapus/'.$row['id_temp']);?>" class="btn btn-danger">
                                             <i class="icon-trash"> Hapus</i>
                                         </a>
                                        </td>
@@ -68,11 +75,9 @@
                                  </tbody>
                               </table>
                            </div>
-                <form action="<?= base_url('penjualan/bayar') ?>" method="post">
+                <form action="<?= base_url('penjualan/pay') ?>" method="post">
                 <input type="hidden" name="id_pelanggan" value="<?= $id_pelanggan ?>">
-                <input type="hidden" name="kode_penjualan" value="<?= $nota ?>">
-                <input type="hidden" name="total_harga" value="<?= $total ?>">
-                <?php if($detail != NULL){ ?>
+                <?php if(($temp != NULL)AND($cek == 0)){ ?>
                     <button type="submit" class="btn btn-primary waves-effect waves-light">Bayar</button>
                     <?php }?>
                 </form>

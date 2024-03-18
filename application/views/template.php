@@ -63,7 +63,7 @@
                      <ul class="dropdown-menu settings-menu">
                         <li><?= $this->session->userdata('level') ?></></li>
                         <a href="<?= base_url('auth/logout') ?>"><li><i class="icon-logout"></i> Logout</li></a>
-
+                        <li><a href="<?= base_url('konfigurasi') ?>">Konfigurasi</a></li>
                      </ul>
                   </li>
                </ul>
@@ -130,7 +130,7 @@
                            <?= $this->session->flashdata('notif',TRUE);?>
                         </div>
                      </div>
-                     <?= $contents ?>
+                     <?= $contents ?>  
                </div>
             </div>
             <!-- 4-blocks row end -->

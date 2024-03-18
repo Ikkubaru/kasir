@@ -45,15 +45,57 @@ class Penjualan extends CI_Controller {
         $this->db->join('produk','detail_penjualan.id_produk=produk.id_produk','left');
         $this->db->where('detail_penjualan.kode_penjualan',$nota);
         $detail = $this->db->get()->result_array();
+        // 
+        $this->db->from('temp');
+        $this->db->join('produk','temp.id_produk=produk.id_produk','left');
+        $this->db->where('temp.id_user',$this->session->userdata('id_user'));
+        $this->db->where('temp.id_pelanggan',$id_pelanggan);
+        $temp = $this->db->get()->result_array();
+
 		$data = array(
 			'judul_halaman' => 'Kasir RC | Transaksi Penjualan',
             'nota'          => $nota,
             'produk'        => $produk,
             'id_pelanggan'  => $id_pelanggan,
             'nama_pelanggan'=> $namaPelanggan,
-            'detail'        => $detail,
+            'temp'          => $temp,
 		);
 		$this->template->load('template','penjualan_transaksi',$data);
+    }
+    public function addTemp(){
+        $this->db->from('produk')->where('id_produk',$this->input->post('id_produk'));
+        $stokLama = $this->db->get()->row()->stok;
+
+        $this->db->from('temp');
+        $this->db->where('id_produk',$this->input->post('id_produk'));
+        $this->db->where('id_user',$this->session->userdata('id_user'));
+        $this->db->where('id_pelanggan',$this->input->post('id_pelanggan'));
+        $cek = $this->db->get()->result_array();
+
+        if($stokLama<$this->input->post('jumlah')){
+            $this->session->set_flashdata('notif','
+            <div class="alert alert-danger" role="alert">
+            Produk yang Dipilih Tidak Mencukupi
+            </div>');
+        }else if($cek!=NULL){
+            $this->session->set_flashdata('notif','
+            <div class="alert alert-danger" role="alert">
+            Produk Sudah Ada dikeranjang
+            </div>');
+        }else{
+            $data = array(
+                'id_pelanggan'      => $this->input->post('id_pelanggan'),
+                'id_user'           => $this->session->userdata('id_user'),
+                'id_produk'         => $this->input->post('id_produk'),
+                'jumlah'            => $this->input->post('jumlah'),
+            );
+            $this->db->insert('temp',$data);
+            $this->session->set_flashdata('notif','
+            <div class="alert alert-success" role="alert">
+            Berhasil Menambahkan Produk Ke Keranjang
+            </div>');
+        }
+        redirect($_SERVER['HTTP_REFERER']);
     }
     public function tambahKeranjang(){
         $this->db->from('detail_penjualan');
@@ -122,6 +164,15 @@ class Penjualan extends CI_Controller {
 			</div>');
         redirect($_SERVER['HTTP_REFERER']);
     }
+    public function tempHapus($id_temp){
+        $where = array('id_temp' => $id_temp);
+        $this->db->delete('temp',$where);
+        $this->session->set_flashdata('notif','
+			<div class="alert alert-danger" role="alert">
+			Berhasil Menghapus
+			</div>');
+        redirect($_SERVER['HTTP_REFERER']);
+    }
     public function bayar(){
         $data = array(
             'kode_penjualan'    => $this->input->post('kode_penjualan',),
@@ -135,6 +186,66 @@ class Penjualan extends CI_Controller {
         Penjualan Berhasil
         </div>');
         redirect('penjualan/invoice/'.$this->input->post('kode_penjualan',));
+    }
+    public function pay(){
+        // perintah buat nota
+        date_default_timezone_set("Asia/Jakarta");
+        $tanggal = date('Y-m ');
+        $this->db->from('penjualan')->where("DATE_FORMAT(tanggal,'%Y-%m')",$tanggal);
+        $jumlah = $this->db->count_all_results();
+        $nota = date('ymd').$jumlah+1;
+        // ambil data dari tabel temp
+        $this->db->from('temp');
+        $this->db->join('produk','temp.id_produk=produk.id_produk','left');
+        $this->db->where('temp.id_user',$this->session->userdata('id_user'));
+        $this->db->where('temp.id_pelanggan',$this->input->post('id_pelanggan'));
+        $temp = $this->db->get()->result_array();
+        $total = 0;
+        foreach($temp as $row){
+            if($row['stok']<$row['jumlah']){
+                $this->session->set_flashdata('notif','
+                <div class="alert alert-danger" role="alert">
+                Produk yang Dipilih Tidak Mencukupi
+                </div>');
+        redirect($_SERVER['HTTP_REFERER']);
+        }
+        $total = $total+$row['jumlah']*$row['harga'];
+        // input ke tabel detail penjualan
+            $data = array(
+                'kode_penjualan'    => $nota,
+                'id_produk'         => $row['id_produk'],
+                'jumlah'            => $row['jumlah'],
+                'sub_total'         => $row['jumlah']*$row['harga'],
+            );
+            $this->db->insert('detail_penjualan',$data);
+            // update stok dari tabel produk
+            $data2 = array(
+                'stok'  => $row['stok']-$row['jumlah'],
+            );
+            $where = array(
+                'id_produk' => $row['id_produk'],
+            );
+            $this->db->update('produk',$data2,$where);
+            // menghapus data di tabel temp
+            $where2 = array(
+                'id_pelanggan'  => $this->input->post('id_pelanggan'),
+                'id_user'       => $this->session->userdata('id_user'),
+            ); 
+            $this->db->delete('temp',$where2);
+        }
+        // input ke tambel penjualan
+        $data = array(
+            'kode_penjualan'    => $nota,
+            'id_pelanggan'      => $this->input->post('id_pelanggan',),
+            'total_harga'       => $total,
+            'tanggal'           => date('Y-m-d'),
+        );
+        $this->db->insert('penjualan',$data);
+        $this->session->set_flashdata('notif','
+        <div class="alert alert-success" role="alert">
+        Penjualan Berhasil
+        </div>');
+        redirect('penjualan/invoice/'.$nota);
     }
     public function invoice($kode_penjualan){
         $this->db->select('*');

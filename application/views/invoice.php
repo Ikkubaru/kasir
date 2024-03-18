@@ -62,7 +62,7 @@
                         <div class="row no-print">
                             <div class="col-xs-12">
                                 <a href="<?= base_url('penjualan/print/'.$nota) ?>" class="btn btn-info" target="_blank">
-                                    Cetak PDF
+                                    Cetak Nota
                                 </a>
                             </div>
                         </div>
